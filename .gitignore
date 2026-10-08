@@ -7,6 +7,10 @@ logs/
 *.log
 *.spec
 
+# build nativo CMake (recriável — ver native/README.md)
+native/build/
+native/bin_v2/
+
 # sistema
 Thumbs.db
 .DS_Store

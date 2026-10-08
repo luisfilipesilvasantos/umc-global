@@ -1,0 +1,484 @@
+{
+ "quando": "2026-10-08 19:30:10",
+ "argv": [
+  "--saturation",
+  "--reuse",
+  "36da88ea-9b50-401c-9f25-7a932fe6d47f"
+ ],
+ "modo": [
+  "saturacao",
+  "workflow"
+ ],
+ "saturacao": {
+  "gpu": "NVIDIA GeForce RTX 3060",
+  "vram_total_gib": 12.0,
+  "torch": "2.13.0+cu126",
+  "cuda": "12.6",
+  "blocos": 64,
+  "alocado_gib": 16.0,
+  "alloc_wall_s": 2.07,
+  "paragem": "tecto-seguranca (16.0 GiB)",
+  "maior_divergencia_cuda_fisica_MiB": 1869,
+  "divergencia_no_bloco": 12,
+  "libertacao_ms": 528.0,
+  "linhas": [
+   {
+    "bloco": 1,
+    "alloc_fill_ms": 34.0,
+    "cuda_livre_MiB": 10981,
+    "fisica_livre_MiB": 9111,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 2,
+    "alloc_fill_ms": 9.1,
+    "cuda_livre_MiB": 10725,
+    "fisica_livre_MiB": 8855,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 3,
+    "alloc_fill_ms": 9.0,
+    "cuda_livre_MiB": 10469,
+    "fisica_livre_MiB": 8599,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 4,
+    "alloc_fill_ms": 9.3,
+    "cuda_livre_MiB": 10213,
+    "fisica_livre_MiB": 8343,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 5,
+    "alloc_fill_ms": 9.0,
+    "cuda_livre_MiB": 9957,
+    "fisica_livre_MiB": 8087,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 6,
+    "alloc_fill_ms": 8.8,
+    "cuda_livre_MiB": 9701,
+    "fisica_livre_MiB": 7831,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 7,
+    "alloc_fill_ms": 9.3,
+    "cuda_livre_MiB": 9445,
+    "fisica_livre_MiB": 7575,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 8,
+    "alloc_fill_ms": 9.1,
+    "cuda_livre_MiB": 9189,
+    "fisica_livre_MiB": 7319,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 9,
+    "alloc_fill_ms": 9.1,
+    "cuda_livre_MiB": 8933,
+    "fisica_livre_MiB": 7063,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 10,
+    "alloc_fill_ms": 9.1,
+    "cuda_livre_MiB": 8677,
+    "fisica_livre_MiB": 6807,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 11,
+    "alloc_fill_ms": 9.3,
+    "cuda_livre_MiB": 8421,
+    "fisica_livre_MiB": 6551,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 12,
+    "alloc_fill_ms": 9.3,
+    "cuda_livre_MiB": 8165,
+    "fisica_livre_MiB": 6295,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 13,
+    "alloc_fill_ms": 9.3,
+    "cuda_livre_MiB": 7909,
+    "fisica_livre_MiB": 6039,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 14,
+    "alloc_fill_ms": 8.9,
+    "cuda_livre_MiB": 7653,
+    "fisica_livre_MiB": 5783,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 15,
+    "alloc_fill_ms": 9.8,
+    "cuda_livre_MiB": 7397,
+    "fisica_livre_MiB": 5527,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 16,
+    "alloc_fill_ms": 8.9,
+    "cuda_livre_MiB": 7141,
+    "fisica_livre_MiB": 5271,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 17,
+    "alloc_fill_ms": 10.7,
+    "cuda_livre_MiB": 6885,
+    "fisica_livre_MiB": 5015,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 18,
+    "alloc_fill_ms": 8.3,
+    "cuda_livre_MiB": 6629,
+    "fisica_livre_MiB": 4759,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 19,
+    "alloc_fill_ms": 8.3,
+    "cuda_livre_MiB": 6373,
+    "fisica_livre_MiB": 4503,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 20,
+    "alloc_fill_ms": 8.4,
+    "cuda_livre_MiB": 6117,
+    "fisica_livre_MiB": 4247,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 21,
+    "alloc_fill_ms": 8.6,
+    "cuda_livre_MiB": 5861,
+    "fisica_livre_MiB": 3991,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 22,
+    "alloc_fill_ms": 8.4,
+    "cuda_livre_MiB": 5605,
+    "fisica_livre_MiB": 3735,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 23,
+    "alloc_fill_ms": 8.3,
+    "cuda_livre_MiB": 5349,
+    "fisica_livre_MiB": 3479,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 24,
+    "alloc_fill_ms": 9.3,
+    "cuda_livre_MiB": 5093,
+    "fisica_livre_MiB": 3223,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 25,
+    "alloc_fill_ms": 9.8,
+    "cuda_livre_MiB": 4837,
+    "fisica_livre_MiB": 2967,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 26,
+    "alloc_fill_ms": 11.3,
+    "cuda_livre_MiB": 4581,
+    "fisica_livre_MiB": 2711,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 27,
+    "alloc_fill_ms": 8.9,
+    "cuda_livre_MiB": 4325,
+    "fisica_livre_MiB": 2455,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 28,
+    "alloc_fill_ms": 9.4,
+    "cuda_livre_MiB": 4069,
+    "fisica_livre_MiB": 2199,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 29,
+    "alloc_fill_ms": 8.4,
+    "cuda_livre_MiB": 3813,
+    "fisica_livre_MiB": 1943,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 30,
+    "alloc_fill_ms": 8.3,
+    "cuda_livre_MiB": 3557,
+    "fisica_livre_MiB": 1687,
+    "gap_MiB": 1869
+   },
+   {
+    "bloco": 31,
+    "alloc_fill_ms": 8.8,
+    "cuda_livre_MiB": 228,
+    "fisica_livre_MiB": 1431,
+    "gap_MiB": -1203
+   },
+   {
+    "bloco": 32,
+    "alloc_fill_ms": 8.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 1175,
+    "gap_MiB": -1176
+   },
+   {
+    "bloco": 33,
+    "alloc_fill_ms": 20.3,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 973,
+    "gap_MiB": -974
+   },
+   {
+    "bloco": 34,
+    "alloc_fill_ms": 40.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 973,
+    "gap_MiB": -974
+   },
+   {
+    "bloco": 35,
+    "alloc_fill_ms": 37.2,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 973,
+    "gap_MiB": -974
+   },
+   {
+    "bloco": 36,
+    "alloc_fill_ms": 43.9,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 973,
+    "gap_MiB": -974
+   },
+   {
+    "bloco": 37,
+    "alloc_fill_ms": 44.3,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 38,
+    "alloc_fill_ms": 39.9,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 39,
+    "alloc_fill_ms": 41.0,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 40,
+    "alloc_fill_ms": 40.1,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 41,
+    "alloc_fill_ms": 40.8,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 42,
+    "alloc_fill_ms": 42.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 43,
+    "alloc_fill_ms": 41.0,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 44,
+    "alloc_fill_ms": 40.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 45,
+    "alloc_fill_ms": 39.7,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 46,
+    "alloc_fill_ms": 40.1,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 47,
+    "alloc_fill_ms": 38.9,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 48,
+    "alloc_fill_ms": 39.8,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 49,
+    "alloc_fill_ms": 39.7,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 50,
+    "alloc_fill_ms": 40.9,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 51,
+    "alloc_fill_ms": 40.7,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 52,
+    "alloc_fill_ms": 40.0,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 53,
+    "alloc_fill_ms": 39.8,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 54,
+    "alloc_fill_ms": 40.9,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 55,
+    "alloc_fill_ms": 40.0,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 56,
+    "alloc_fill_ms": 40.2,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 57,
+    "alloc_fill_ms": 92.9,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 58,
+    "alloc_fill_ms": 88.8,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 59,
+    "alloc_fill_ms": 89.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 60,
+    "alloc_fill_ms": 91.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 61,
+    "alloc_fill_ms": 90.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 62,
+    "alloc_fill_ms": 91.7,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 63,
+    "alloc_fill_ms": 88.3,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   },
+   {
+    "bloco": 64,
+    "alloc_fill_ms": 89.5,
+    "cuda_livre_MiB": 0,
+    "fisica_livre_MiB": 972,
+    "gap_MiB": -973
+   }
+  ]
+ },
+ "workflow": {
+  "prompt_id": "36da88ea-9b50-401c-9f25-7a932fe6d47f",
+  "duracao_s": 44.82,
+  "status": "success",
+  "outputs": 1,
+  "reutilizado_do_historico": true,
+  "system_stats_antes": null,
+  "system_stats_depois": null
+ }
+}

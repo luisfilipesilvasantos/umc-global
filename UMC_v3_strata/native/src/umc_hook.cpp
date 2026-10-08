@@ -7,6 +7,7 @@
 #include <map>
 #include <mutex>
 #include <vector>
+#include "allocator/allocator.h"
 
 // ============================================================================
 // IAT Patching - nvcuda.dll exports are RIP-relative IAT thunks (ff 25 xx xx xx xx)
@@ -107,11 +108,26 @@ static void trackFree(void* ptr) {
 // Hook Wrappers
 // ============================================================================
 
+/* Wrapper driver para a ladder (0=ok, 1=OOM, 2=erro real). */
+static int driver_alloc_fn(void* /*ctx*/, size_t size, void** out) {
+    CUresult res = Real_cuMemAlloc_v2((CUdeviceptr*)out, size);
+    if (res == CUDA_SUCCESS) return 0;
+    if (res == CUDA_ERROR_OUT_OF_MEMORY) return 1;
+    return 2;
+}
+
 static CUresult CUDAAPI Hook_cuMemAlloc_v2(CUdeviceptr* dptr, size_t bytesize) {
-    CUresult res = Real_cuMemAlloc_v2(dptr, bytesize);
-    if (res == CUDA_SUCCESS && g_hooksActive)
-        trackAlloc((void*)*dptr, bytesize);
-    return res;
+    /* OOM-retry ladder (Fase 1): em OOM sincroniza + backoff + retry. */
+    UmC_RetryConfig cfg = {4, 25, 1};
+    int ladder_err = 0;
+    void* ptr = umc_alloc_with_retry(driver_alloc_fn, nullptr, bytesize, &cfg, &ladder_err);
+    if (ptr) {
+        *dptr = (CUdeviceptr)ptr;
+        if (g_hooksActive) trackAlloc(ptr, bytesize);
+        return CUDA_SUCCESS;
+    }
+    /* Esgotado — devolver o erro REAL (OOM ou erro) ao chamador. */
+    return (ladder_err == 2) ? CUDA_ERROR_UNKNOWN : CUDA_ERROR_OUT_OF_MEMORY;
 }
 
 static CUresult CUDAAPI Hook_cuMemFree_v2(CUdeviceptr dptr) {
@@ -122,8 +138,17 @@ static CUresult CUDAAPI Hook_cuMemFree_v2(CUdeviceptr dptr) {
 static CUresult CUDAAPI Hook_cuMemGetInfo_v2(size_t* free, size_t* total) {
     CUresult res = Real_cuMemGetInfo_v2(free, total);
     if (res == CUDA_SUCCESS) {
-        g_vramTotal = *total;
+        g_vramTotal = *total;   // estado fisico real (para stats)
         g_vramFree = *free;
+        /* Se o orcamento virtual esta ativo, devolve a VISTA VIRTUAL
+         * (o "mentir" anti-OOM): torch ve o pool, nao a fisica. O estado
+         * fisico real do UMC vem do NVML (VirtualGpuMemory.cpp), nao
+         * daqui — inflar este hook nao corrompe a gestao interna. */
+        size_t vfree, vtotal;
+        if (umc_get_virtual_view(&vfree, &vtotal) == 1) {
+            *free = vfree;
+            *total = vtotal;
+        }
     }
     return res;
 }
@@ -266,6 +291,39 @@ __declspec(dllexport) void umc_print_stats() {
     printf("[UMC]   VRAM total:      %zu MB\n", g_vramTotal / (1024 * 1024));
     printf("[UMC]   VRAM free:       %zu MB\n", g_vramFree / (1024 * 1024));
     printf("[UMC] =====================\n");
+}
+
+/* ============================================================================
+ * Contrato de producao (dual exports) — o bridge v3 chama umc_hook_install.
+ * ==========================================================================*/
+
+__declspec(dllexport) int umc_hook_install(size_t vram_gb, size_t ram_gb,
+                                            size_t pagefile_gb, int /*prio*/) {
+    umc_set_virtual_budget(vram_gb * 1024ULL * 1024 * 1024,
+                           ram_gb * 1024ULL * 1024 * 1024,
+                           pagefile_gb * 1024ULL * 1024 * 1024);
+    int n = umc_install_hooks();
+    return (n >= 0) ? 0 : -1;
+}
+
+__declspec(dllexport) int umc_hook_is_active() {
+    return g_hooksActive ? 1 : 0;
+}
+
+__declspec(dllexport) int umc_hook_uninstall() {
+    return umc_uninstall_hooks();
+}
+
+/* Vista virtual da memoria (mesma que o hook de cuMemGetInfo devolve).
+ * Exportada para compatibilidade com o contrato de producao. */
+__declspec(dllexport) cudaError_t umc_hooked_cudaMemGetInfo(size_t* free, size_t* total) {
+    size_t f, t;
+    if (umc_get_virtual_view(&f, &t) == 1) {
+        *free = f;
+        *total = t;
+        return cudaSuccess;
+    }
+    return cudaMemGetInfo(free, total);  // sem orcamento -> valores reais
 }
 
 }  // extern "C"

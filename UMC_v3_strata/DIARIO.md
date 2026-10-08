@@ -51,4 +51,15 @@ Lê sempre a entrada mais recente antes de continuares o trabalho.
   - *Nota*: o `DIARIO.md` mestre em `UMC-avanca` NÃO é alterado (só-leitura); a entrada vive em `UMC_v3_strata/DIARIO.md`.
   - *Próximo*: Fase 1 — reescrita de `src/allocator/` (OOM-retry ladder, soft-OOM por NVML, exports duplicados, testes com exit code real).
 
+- **[2026-10-08] Fase 1 — allocator nativo (OOM-retry ladder + soft-OOM NVML + dual exports) — concluída.**
+  - *O que*: novo `src/allocator/` (`allocator.h` + `allocator.cpp`) — dono do estado partilhado: **OOM-retry ladder** (`umc_alloc_with_retry`: em OOM sincroniza + backoff linear + retry, nunca engole o erro real), **soft-OOM por NVML** (`umc_nvml_physical_free/total`, `umc_physical_pressure_ratio`), **vista virtual** (`umc_get_virtual_view`: total=orcamento, free=orcamento−alocado) e **orcamento** (`umc_set_virtual_budget`). `umc_hook.cpp`: restaura o contrato de produção (`umc_hook_install/is_active/uninstall` + `umc_hooked_cudaMemGetInfo`), ladder no `Hook_cuMemAlloc_v2`, vista virtual no `Hook_cuMemGetInfo`. `umc_pytorch_allocator.cpp`: tracking delegado no allocator partilhado.
+  - *Descoberta crítica (medida com `dumpbin`)*: o build nativo da Fase 0 **não era drop-in** dos DLLs de produção — `allocator_v2.dll` tinha **0 exports**, `umc_hook_v2.dll` tinha nomes errados (`umc_install_hooks` vs o `umc_hook_install` que o bridge chama) e faltava o `umc_hooked_cudaMemGetInfo` (o mecanismo anti-OOM). O bridge v3 chama `umc_alloc`/`umc_free` (allocator) e `umc_hook_install` (hook). A Fase 1 restaurou o contrato.
+  - *Medido (build)*: exit 0, **6/6 alvos, 0 erros** (warnings LNK4217 benignos do dllimport + LNK4070 quirk conhecido). `UMC_v2` reduzido ao core VMM (`umc_client.cpp` + `VirtualGpuMemory.cpp`); `umc.def` ajustado; `allocator_v2` e `umc_hook_v2`/`ollama_hook_v2` ligam o allocator partilhado.
+  - *Medido (testes)*: `tests/test_oom_ladder.py` **TODOS OK, exit 0** — 11 exports presentes; NVML total=12 GiB, free=11,1 GiB, pressão=13,6%; vista virtual total=48 GiB, free=48 GiB−tracked; OOM gracioso (100 GiB→None, sem crash; 1 MiB depois funciona); ladder OOM→None (out_err=1) e erro real→None (out_err=2, não engolido).
+  - *Exports verificados (dual exports)*: `allocator_v2.dll` 15 exports (`umc_alloc`/`umc_free` + ladder/NVML); `umc_hook_v2.dll` 11 exports (`umc_hook_install`/`umc_hooked_cudaMemGetInfo` + stats antigos).
+  - *Fórmula da vista virtual confirmada pela medição*: free = orcamento − alocado (48 GB − 26 MB = 47,98 GB livres no `system_stats` de hoje).
+  - *Decisão de design*: a ladder vive **só no hook** — o `cudaMalloc` do `umc_alloc` passa pelo hook de `cuMemAlloc` e assim recebe a ladder; evita aninhamento 4×4.
+  - *Nota*: as DLLs novas continuam em `native/build/Release` (quirk MSVC) — **não instaladas em produção**; a cadeia de produção (`ComfyUI\umc\build`) está intacta.
+  - *Próximo*: Fase 2 — tecto físico proactivo (`--umc-phys-reserve`) com medição antes/depois; ou ligar as DLLs novas ao launcher de teste (`ARRANQUE_UMC_V3_TEST.bat`).
+
 ---

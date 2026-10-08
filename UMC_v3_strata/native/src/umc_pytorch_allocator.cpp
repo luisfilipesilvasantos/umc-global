@@ -1,19 +1,16 @@
 #include "VirtualGpuMemory.h"
+#include "allocator/allocator.h"
 #include <cuda_runtime.h>
-#include <unordered_map>
 #include <mutex>
 
-static std::unordered_map<void*, size_t> g_allocations;
-static std::mutex g_mutex;
 static bool g_initialized = false;
-static size_t g_totalAllocated = 0;
-static size_t g_peakAllocated = 0;
+static std::mutex g_mutex;
 static int g_deviceCount = 0;
 static size_t g_vramTotal = 0;
 
 extern "C" {
 
-void umc_init_allocator(size_t maxVramBudget, size_t maxRamBudget) {
+__declspec(dllexport) void umc_init_allocator(size_t maxVramBudget, size_t maxRamBudget) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_initialized) return;
 
@@ -36,7 +33,7 @@ void umc_init_allocator(size_t maxVramBudget, size_t maxRamBudget) {
     std::cout << "[UMC] Allocator initialized - " << g_deviceCount << " GPU(s)\n";
 }
 
-void* umc_alloc(size_t size, int device, cudaStream_t stream) {
+__declspec(dllexport) void* umc_alloc(size_t size, int device, cudaStream_t stream) {
     if (size == 0) return nullptr;
 
     if (device < 0) device = 0;
@@ -47,47 +44,31 @@ void* umc_alloc(size_t size, int device, cudaStream_t stream) {
     void* ptr = nullptr;
     err = cudaMalloc(&ptr, size);
     if (err != cudaSuccess) {
+        /* O OOM-retry ladder vive no hook (umc_hook_v2.dll) — este cudaMalloc
+         * passa pelo hook de cuMemAlloc, que faz sync+backoff+retry antes de
+         * devolver o erro real. Nunca engole o erro. */
         std::cerr << "[UMC WARN] cudaMalloc(" << size << ") failed on GPU " << device << ": "
                   << cudaGetErrorString(err) << "\n";
         return nullptr;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(g_mutex);
-        g_allocations[ptr] = size;
-        g_totalAllocated += size;
-        if (g_totalAllocated > g_peakAllocated) {
-            g_peakAllocated = g_totalAllocated;
-        }
-    }
-
+    umc_track_alloc(ptr, size);
     return ptr;
 }
 
-void umc_free(void* ptr, size_t size, int device, cudaStream_t stream) {
+__declspec(dllexport) void umc_free(void* ptr, size_t size, int device, cudaStream_t stream) {
     if (!ptr) return;
 
     cudaError_t err = cudaFree(ptr);
-
-    {
-        std::lock_guard<std::mutex> lock(g_mutex);
-        auto it = g_allocations.find(ptr);
-        if (it != g_allocations.end()) {
-            g_totalAllocated -= it->second;
-            g_allocations.erase(it);
-        }
-    }
+    umc_track_free(ptr);
 
     if (err != cudaSuccess) {
         std::cerr << "[UMC WARN] cudaFree failed: " << cudaGetErrorString(err) << "\n";
     }
 }
 
-void umc_cleanup_allocator() {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    g_allocations.clear();
-    g_totalAllocated = 0;
-    g_peakAllocated = 0;
+__declspec(dllexport) void umc_cleanup_allocator() {
+    umc_track_reset();
     g_initialized = false;
 }
 

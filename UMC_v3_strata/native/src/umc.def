@@ -16,14 +16,3 @@ EXPORTS
     UMC_RegisterAccess
     UMC_IsThrashingDetected
     UMC_GetTierStats
-    umc_alloc
-    umc_free
-    umc_init_allocator
-    umc_cleanup_allocator
-    umc_install_hooks
-    umc_uninstall_hooks
-    umc_get_tracked_count
-    umc_get_total_allocated
-    umc_get_peak_allocated
-    umc_reset_peak
-    umc_print_stats

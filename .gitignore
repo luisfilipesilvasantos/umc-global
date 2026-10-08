@@ -1,0 +1,12 @@
+# artefactos de build / runtime
+build_tmp/
+__pycache__/
+*.pyc
+logs/
+*_logs/
+*.log
+*.spec
+
+# sistema
+Thumbs.db
+.DS_Store

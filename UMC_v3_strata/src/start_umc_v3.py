@@ -68,6 +68,13 @@ def main():
         print("[UMC v3] ERROR: instalacao do bridge falhou")  # noqa: T201
         sys.exit(3)
 
+    # VRAM física no arranque (sinal honesto da Fase 1/3); LOW se < 512 MiB.
+    from umc_common import log
+    pfree = umc_bridge_v3.physical_free()
+    if pfree is not None:
+        msg = "{} MiB de VRAM fisicos livres no arranque".format(pfree // 1024 ** 2)
+        log("start", ("LOW: " if pfree < 512 * 1024 ** 2 else "") + msg)
+
     # 2. cli_args com o argv final, antes de importar execution (que o lê).
     import comfy.options
     comfy.options.enable_args_parsing()

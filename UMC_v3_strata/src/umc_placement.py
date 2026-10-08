@@ -22,21 +22,48 @@ Segurança:
   + 2GB; caso contrário deixa o load reactivo decidir (evita descarregar o
   modelo activo a meio de um nó).
 - Tudo em try/except: erro de prefetch mata só o prefetch, nunca o workflow.
+
+Fase 3 (política de calor + integridade):
+- A cada prompt novo (mudança de prompt_id, mesmo com prefetch desligado):
+  epoch do calor (umc_heat), verificação do canário de integridade
+  (umc_integrity) e aviso LOW de VRAM física (edge-trigger, < 512 MiB).
+- Prefetch carrega os modelos por calor decrescente (os mais quentes primeiro).
+- Evicção guardada (umc_heat.MARGEM/heat_of): antes de free_memory actuar,
+  se a VRAM virtual estiver apertada (< 4 GiB livres) descarrega os modelos
+  FRIOS primeiro (calor 0, ou calor + MARGEM <= o mais quente), máx. 3 por
+  chamada com cooldown de 30 s — o free_memory do ComfyUI vê espaço e não
+  precisa de descarregar os quentes. Nunca toca em: for_dynamic,
+  keep_loaded, modelos recém-carregados (protected) nem se o utilizador
+  desligou a smart memory. Kill-switch: UMC_V3_HEAT_POLICY=0.
 """
 import os
+import sys
 import time
 
+import umc_heat
+import umc_integrity
 from umc_common import fmt_gb, log
 
 _MARGEM = 2 * 1024 ** 3
+_LOW_PHYS = 512 * 1024 ** 2          # aviso LOW de VRAM física livre
+_EVICTION_FREE = 4 * 1024 ** 3       # só eviciona com < 4 GiB virtuais livres
+_EVICTION_TARGET_EXTRA = 2 * 1024 ** 3   # alvo: pedido + 2 GiB (min. 4 GiB)
+_EVICTION_MAX = 3                    # máx. descarregamentos por free_memory
+_EVICTION_COOLDOWN_S = 30.0
 
+_heat_on = os.environ.get("UMC_V3_HEAT_POLICY", "1") != "0"
 _prefetch_on = True
 _installed = False
 _deferred = False
 _skip_seen = None
 _orig_execute = None
+_protected = set()       # ids dos patchers carregados recentemente (anti-evicção)
+_last_eviction = 0.0
+_last_prompt = None
+_low_phys = False        # edge-trigger do aviso LOW
 _hooks = {"load": False, "free": False, "execute": False}
-_stats = {"loads": 0, "frees": 0, "prefetch_ok": 0, "prefetch_skip": 0, "prefetch_err": 0}
+_stats = {"loads": 0, "frees": 0, "prefetch_ok": 0, "prefetch_skip": 0, "prefetch_err": 0,
+          "evictions": 0}
 
 
 def _patcher_of(obj):
@@ -153,6 +180,10 @@ def _prefetch_now(dynprompt, caches, execution_list, current_item, prompt_id):
             _stats["prefetch_skip"] += 1
             _skip_note(prompt_id, "carregado", "modelos ja carregados")
             return
+        if _heat_on:
+            # mais quentes primeiro: se faltar espaço a meio do lote, os
+            # modelos que o grafo mais usa já estão carregados
+            todo.sort(key=umc_heat.heat_of, reverse=True)
         needed = sum(p.model_size() for p in todo)
         if not _free_ok(needed):
             _stats["prefetch_skip"] += 1
@@ -171,7 +202,43 @@ def _prefetch_now(dynprompt, caches, execution_list, current_item, prompt_id):
         log("place", "prefetch ERRO: {!r}".format(e))
 
 
+def _on_new_prompt(prompt_id):
+    """Mudança de prompt: epoch do calor, integridade e aviso LOW físico.
+
+    Corre mesmo com o prefetch desligado — é a tique do relógio da Fase 3.
+    """
+    global _last_prompt, _low_phys
+    _last_prompt = prompt_id
+    if _heat_on:
+        try:
+            umc_heat.epoch()
+        except Exception as e:  # noqa: BLE001
+            log("place", "epoch ERRO: {!r}".format(e))
+    try:
+        umc_integrity.verify_epoch(prompt_id)
+    except Exception as e:  # noqa: BLE001
+        log("place", "integrity ERRO: {!r}".format(e))
+    try:
+        import umc_bridge_v3
+        pf = umc_bridge_v3.physical_free()
+        if pf is not None:
+            low = pf < _LOW_PHYS
+            if low and not _low_phys:
+                log("place", "LOW: so {} MiB de VRAM fisicos livres".format(pf // 1024 ** 2))
+            elif not low and _low_phys:
+                log("place", "VRAM fisica recuperada: {} MiB livres".format(pf // 1024 ** 2))
+            _low_phys = low
+    except Exception:  # noqa: BLE001
+        pass
+
+
 async def _hooked_execute(*args, **kwargs):
+    prompt_id = args[6] if len(args) > 6 else kwargs.get("prompt_id")
+    if prompt_id is not None and prompt_id != _last_prompt:
+        try:
+            _on_new_prompt(prompt_id)
+        except Exception as e:  # noqa: BLE001 - a tique nunca parte a execução
+            log("place", "on_new_prompt ERRO: {!r}".format(e))
     if _prefetch_on:
         try:
             # Assinatura posicional de execution.execute (v0.34):
@@ -181,7 +248,6 @@ async def _hooked_execute(*args, **kwargs):
             dynprompt = args[1] if len(args) > 1 else kwargs.get("dynprompt")
             caches = args[2] if len(args) > 2 else kwargs.get("caches")
             current_item = args[3] if len(args) > 3 else kwargs.get("current_item")
-            prompt_id = args[6] if len(args) > 6 else kwargs.get("prompt_id")
             execution_list = args[7] if len(args) > 7 else kwargs.get("execution_list")
             if None not in (dynprompt, caches, execution_list):
                 _prefetch_now(dynprompt, caches, execution_list, current_item, prompt_id)
@@ -209,16 +275,108 @@ def _wrap_load(mm):
         log("place", "load n={} req={} size={} {}ms [{}]".format(
             len(models), fmt_gb(mem_req) if isinstance(mem_req, (int, float)) else mem_req,
             fmt_gb(size) if size >= 0 else "?", dt, names))
+        if _heat_on:
+            try:
+                for m in models:
+                    umc_heat.note_use(m)   # carregado == usado (calor)
+                # lote recém-carregado fica protegido da evicção (anti-thrash:
+                # nunca descarregar logo o que acabou de entrar)
+                _protected.clear()
+                _protected.update(id(m) for m in models)
+            except Exception:  # noqa: BLE001 - calor nunca parte o load
+                pass
         return r
 
     mm.load_models_gpu = load_wrapper
     _hooks["load"] = True
 
 
+def _evict_if_needed(args, kwargs):
+    """Evicção guardada por calor sob pressão virtual (ver docstring do módulo).
+
+    Corre ANTES de free_memory actuar: se a visão virtual estiver apertada,
+    descarrega os modelos frios primeiro, para que o free_memory do ComfyUI
+    (que descalça por offloaded/refcount/tamanho, sem calor) não precise de
+    tocar nos quentes. Nunca propaga excepções.
+    """
+    global _last_eviction
+    if not _heat_on:
+        return
+    try:
+        import comfy.model_management as mm
+    except Exception:  # noqa: BLE001
+        return
+    if getattr(mm, "DISABLE_SMART_MEMORY", False):
+        return   # utilizador pediu comportamento simples: não nos metemos
+    keep = args[2] if len(args) > 2 else kwargs.get("keep_loaded", [])
+    for_dynamic = args[3] if len(args) > 3 else kwargs.get("for_dynamic", False)
+    if for_dynamic:
+        return   # unload dinâmico: o chamador tem planos próprios
+    if time.time() - _last_eviction < _EVICTION_COOLDOWN_S:
+        return
+    try:
+        import umc_bridge_v3
+        vfree, _vtotal = umc_bridge_v3.virtual_view()
+    except Exception:  # noqa: BLE001
+        return
+    if vfree is None or vfree >= _EVICTION_FREE:
+        return   # sem pressão virtual não se mexe nada
+    mem_req = args[0] if args else kwargs.get("memory_required", 0)
+    if not isinstance(mem_req, (int, float)) or mem_req >= 1e30:
+        mem_req = 0
+    device = args[1] if len(args) > 1 else kwargs.get("device")
+    goal = max(_EVICTION_FREE, mem_req + _EVICTION_TARGET_EXTRA)
+    # candidatos: carregados, vivos, não usados NESTA ronda (currently_used),
+    # não protegidos, não no keep_loaded e no mesmo device — mesmas regras do
+    # free_memory, mais as do UMC (protected/heat)
+    cands = []
+    for i, lm in enumerate(mm.current_loaded_models):
+        p = lm.model
+        if p is None or lm.is_dead() or lm.currently_used:
+            continue
+        if device is not None and lm.device != device:
+            continue
+        if id(p) in _protected or (keep and lm in keep):
+            continue
+        cands.append((umc_heat.heat_of(p), -lm.model_offloaded_memory(),
+                      sys.getrefcount(p), lm.model_memory(), i, lm))
+    if not cands:
+        return
+    hottest = max(c[0] for c in cands)
+    victims = [c for c in cands if c[0] == 0.0 or c[0] + umc_heat.MARGEM <= hottest]
+    victims.sort(key=lambda c: c[:5])   # (calor, -offloaded, refcount, tamanho, i)
+    evicted = []
+    freed = 0
+    for h, _off, _ref, mem, i, lm in victims:
+        if len(evicted) >= _EVICTION_MAX or vfree + freed >= goal:
+            break
+        freed += lm.model_loaded_memory()
+        if lm.model_unload(1e32):   # 1e32 > qualquer tamanho -> descarga completa
+            evicted.append((i, lm, h))
+    for i, _lm, _h in sorted(evicted, reverse=True):
+        mm.current_loaded_models.pop(i)
+    if not evicted:
+        return
+    _last_eviction = time.time()
+    _stats["evictions"] += len(evicted)
+    mm.soft_empty_cache()
+    log("place", "eviction: {} modelos ({} a frio) | virt livre {} -> alvo {} | "
+        "saiem: {}".format(
+            len(evicted), sum(1 for _i, _l, h in evicted if h == 0.0),
+            fmt_gb(vfree), fmt_gb(goal),
+            ", ".join("{}={:.1f}".format(
+                type(getattr(lm.model, "model", lm.model)).__name__, h)
+                for _i, lm, h in evicted)))
+
+
 def _wrap_free(mm):
     orig = mm.free_memory
 
     def free_wrapper(*args, **kwargs):
+        try:
+            _evict_if_needed(args, kwargs)
+        except Exception as e:  # noqa: BLE001 - evicção nunca parte o free
+            log("place", "eviction ERRO: {!r}".format(e))
         r = orig(*args, **kwargs)
         _stats["frees"] += 1
         try:

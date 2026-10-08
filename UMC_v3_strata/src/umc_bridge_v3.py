@@ -9,7 +9,8 @@ central da "Fase 1": contabilidade dual-track.
     load do comfy.model_management e tem de ser decidida com dados).
   - Visão FÍSICA (pynvml) passa a estar disponível e exposta em
     physical_total/free/used() + nas chaves physical_bytes.* do memory_stats.
-    É o sinal honesto que a Fase 3 (política de calor) vai consumir.
+    É o sinal honesto que a Fase 3 (política de calor) consome — e as chaves
+    heat_bytes.* (só leitura) expõem o calor agregado do umc_heat.
 
 A camada nativa (allocator_v2.dll / umc_hook_v2.dll / VirtualGpuMemory.dll) é
 reutilizada do UMC v2 — não há fonte nativa disponível; vê README.md.
@@ -280,6 +281,8 @@ def _install_stats_shim(torch, cuda_memory):
         "segment.small_pool.freed", "segment.small_pool.peak",
         # extras honestos (Fase 1) - nao sao lidos pelo ComfyUI, so por nos/diag
         "physical_bytes.all.current", "physical_bytes.all.free", "physical_bytes.all.peak",
+        # extras da Fase 3 - calor agregado do umc_heat (so leitura)
+        "heat_bytes.all.current", "heat_bytes.all.peak",
     )
 
     def _virtual_used():
@@ -302,6 +305,13 @@ def _install_stats_shim(torch, cuda_memory):
             stats["physical_bytes.all.current"] = p_used
             stats["physical_bytes.all.free"] = physical_free()
             stats["physical_bytes.all.peak"] = p_used
+        try:
+            import umc_heat
+            hot_b, _n_hot, hot_peak = umc_heat.totals()
+            stats["heat_bytes.all.current"] = hot_b
+            stats["heat_bytes.all.peak"] = hot_peak
+        except Exception:  # noqa: BLE001 - calor e observacao, nunca parte stats
+            pass
         return stats
 
     def fake_memory_allocated(device=None):

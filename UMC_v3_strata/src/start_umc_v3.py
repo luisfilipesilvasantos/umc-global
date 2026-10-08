@@ -77,6 +77,14 @@ def main():
         print("[UMC v3] ERROR: argumentos recusados pelo ComfyUI (ver mensagem acima)")  # noqa: T201
         sys.exit(4)
 
+    # Com UMC o backend tem de ser sempre o pluggable, mas o cuda_malloc.py do
+    # ComfyUI (>= 0.34) ja nao honra a env UMC_V2 e, quando o argv vem SEM
+    # --disable-cuda-malloc (ex.: UMCv3.exe de duplo-clique), força
+    # PYTORCH_CUDA_ALLOC_CONF=backend:cudaMallocAsync depois do bridge instalado.
+    # O torch re-parseia a config em runtime (ex.: torch.istft, SAM3) e faz
+    # assert "cudaMallocAsync != pluggable" contra o allocator do UMC.
+    comfy.cli_args.args.disable_cuda_malloc = True
+
     # 3. Placement: contabilidade de loads + prefetch preditivo.
     import umc_placement
     umc_placement.install(prefetch=not args.no_prefetch)

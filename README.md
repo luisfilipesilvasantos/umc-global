@@ -94,6 +94,14 @@ ComfyUI em passthrough. Para instalar/verificar sem arrancar o servidor:
 python_embeded\python.exe UMC_v3_strata\src\start_umc_v3.py --comfyui-dir ComfyUI --install-test
 ```
 
+Nota: `start_umc_v3.py` força sempre `--disable-cuda-malloc` mesmo quando o
+argv vem sem flags (ex.: `UMCv3.exe` de duplo-clique). Sem isso o
+`cuda_malloc.py` do ComfyUI (>= 0.34) activa `backend:cudaMallocAsync` depois
+do bridge instalar o pluggable e o torch faz assert em runtime
+(`cudaMallocAsync != pluggable`, ex.: `torch.istft`/SAM3). Para o conjunto
+completo de flags recomendadas (`--reserve-vram`,
+`--use-pytorch-cross-attention`, …) usa o `.bat`.
+
 ## Como funciona (arquitetura)
 
 ```
